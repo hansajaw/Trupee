@@ -1,0 +1,36 @@
+const COLORS = {
+  light: {
+    primary: "#10B981",
+    primaryDark: "#059669",
+    primaryLight: "#34D399",
+    white: "#FFFFFF",
+    black: "#000000",
+    background: "#F0FDF4",
+    textDark: "#1E293B",
+    textSecondary: "#64748B",
+    placeholderText: "#94A3B8",
+    border: "#D1FAE5",
+    inputBackground: "#F7FEF9",
+    success: "#10B981",
+    error: "#EF4444",
+    shadow: "rgba(16, 185, 129, 0.15)",
+  },
+  dark: {
+    primary: "#10B981",
+    primaryDark: "#059669",
+    primaryLight: "#34D399",
+    white: "#1E293B",
+    black: "#FFFFFF",
+    background: "#0F172A",
+    textDark: "#FFFFFF",
+    textSecondary: "#94A3B8",
+    placeholderText: "#94A3B8",
+    border: "#334155",
+    inputBackground: "#1E293B",
+    success: "#10B981",
+    error: "#EF4444",
+    shadow: "rgba(16, 185, 129, 0.25)",
+  },
+};
+
+export default COLORS;

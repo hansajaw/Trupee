@@ -1,41 +1,77 @@
-# ----------------------------
-# ✅ Mobile frontend
-# ----------------------------
-
-# Allow Mobile folder to be tracked
-!Mobile/
-!Mobile/**
-
-# Only ignore sensitive or temp files in Mobile/, not the whole folder!
-Mobile/*.key
-Mobile/*.mobileprovision
+# ------------------------
+# 📱 React Native (Mobile)
+# ------------------------
+Mobile/node_modules/
+Mobile/.expo/
+Mobile/.expo-shared/
+Mobile/dist/
+Mobile/build/
+Mobile/web-build/
 Mobile/metro-health-check*
-Mobile/npm-debug.*
-Mobile/yarn-debug.*
-Mobile/yarn-error.*
+Mobile/*.log
+Mobile/debug/
 Mobile/.DS_Store
 Mobile/*.pem
-Mobile/.env*.local
+Mobile/*.key
+Mobile/*.p8
+Mobile/*.p12
+Mobile/*.jks
+Mobile/*.mobileprovision
+Mobile/.env*
 Mobile/*.tsbuildinfo
+Mobile/.idea/
+Mobile/.vscode/
 Mobile/app-example
+Mobile/expo-env.d.ts
 
+# Expo specific
+Mobile/.expo/
+Mobile/.expo-shared/
 
-# ----------------------------
-# ✅ Backend (adjust based on your tech)
-# ----------------------------
+# Android/iOS build files (if applicable)
+Mobile/android/
+Mobile/ios/
 
-Backend/node_modules/        # For Node.js backend
-Backend/__pycache__/         # For Python backend
-Backend/*.pyc                # For Python backend
-Backend/.env                 # For environment variables
-Backend/.venv/               # For Python virtual environments
-Backend/dist/                # For build output
+# -------------------------
+# 🔧 Backend
+# -------------------------
+# Node.js (if used)
+Backend/node_modules/
+Backend/.env
+Backend/dist/
+Backend/build/
+Backend/npm-debug.log
 
+# Python (if used)
+Backend/__pycache__/
+Backend/*.pyc
+Backend/.venv/
+Backend/.env
 
-# ----------------------------
-# ✅ General ignores
-# ----------------------------
-
-.DS_Store
+# -------------------------
+# 🧼 General
+# -------------------------
 *.log
+.DS_Store
 *.bak
+*.tmp
+*.swp
+*.swo
+*.orig
+*.lock
+.env
+.env.*
+.idea/
+.vscode/
+coverage/
+tmp/
+.cache/
+.expo/
+*.iml
+
+# macOS
+*.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db

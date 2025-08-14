@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Trupee",
+    "slug": "Mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/splash-icon.png",               
+    "scheme": "mobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kasperdul.trupee",
+      "infoPlist": { "ITSAppUsesNonExemptEncryption": false }
+    },
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/splash-icon.png", 
+        "backgroundColor": "#0F172A",
+        "softwareKeyboardLayoutMode": "resize" 
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.kasperdul.trupee"
+    },
+
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",      
+          "resizeMode": "contain",
+          "backgroundColor": "#0F172A"
+        }
+      ],
+      "expo-localization"
+    ],
+
+    "experiments": { "typedRoutes": true },
+    "extra": {
+      "router": {},
+      "eas": { "projectId": "3d5cc885-eec5-42ed-8ed6-173e2b61ce89" }
+    },
+    "owner": "kasperdul"
+  }
+}
