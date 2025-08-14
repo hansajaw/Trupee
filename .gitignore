@@ -1,17 +1,15 @@
-# Mobile (Expo/React Native)
-Mobile/node_modules/
-Mobile/.expo/
-Mobile/dist/
-Mobile/web-build/
-Mobile/expo-env.d.ts
-Mobile/.kotlin/
-Mobile/*.orig.*
-Mobile/*.jks
-Mobile/*.p8
-Mobile/*.p12
+# ----------------------------
+# ✅ Mobile frontend
+# ----------------------------
+
+# Allow Mobile folder to be tracked
+!Mobile/
+!Mobile/**
+
+# Only ignore sensitive or temp files in Mobile/, not the whole folder!
 Mobile/*.key
 Mobile/*.mobileprovision
-Mobile/.metro-health-check*
+Mobile/metro-health-check*
 Mobile/npm-debug.*
 Mobile/yarn-debug.*
 Mobile/yarn-error.*
@@ -21,15 +19,23 @@ Mobile/.env*.local
 Mobile/*.tsbuildinfo
 Mobile/app-example
 
-# Backend (adjust based on your backend tech)
-Backend/node_modules/  # For Node.js backend
-Backend/__pycache__/  # For Python backend
-Backend/*.pyc  # For Python backend
-Backend/.env  # For environment variables
-Backend/.venv/  # For Python virtual environments
-Backend/dist/  # For built files (if applicable)
 
-# General ignores
+# ----------------------------
+# ✅ Backend (adjust based on your tech)
+# ----------------------------
+
+Backend/node_modules/        # For Node.js backend
+Backend/__pycache__/         # For Python backend
+Backend/*.pyc                # For Python backend
+Backend/.env                 # For environment variables
+Backend/.venv/               # For Python virtual environments
+Backend/dist/                # For build output
+
+
+# ----------------------------
+# ✅ General ignores
+# ----------------------------
+
 .DS_Store
 *.log
 *.bak
