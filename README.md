@@ -8,7 +8,7 @@
 
 ## 📱 App UI Preview
 
-![Trupee App UI](assets/trupee_ui.png)
+![Trupee App UI](Mobile/assets/trupee_ui.png)
 
 This screenshot showcases the main dashboard of the Trupee App, featuring a clean layout with a balance tracker, categorized transaction cards, and intuitive navigation.
 
