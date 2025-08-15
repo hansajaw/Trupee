@@ -20,7 +20,7 @@ import { useUser } from "../../context/user-context";
 import { useRouter } from "expo-router";
 
 const { height } = Dimensions.get("window");
-const BASE_URL = "http://172.20.10.6:3000";
+const BASE_URL = "https://trupee-production.up.railway.app";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
