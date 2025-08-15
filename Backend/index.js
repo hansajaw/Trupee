@@ -17,39 +17,6 @@ app.use(cors());
 // Health check
 app.get("/health", (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-app.get("/verify-success", (_req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Email Verified</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          text-align: center;
-          padding: 50px;
-          background-color: #f8f9fa;
-          color: #333;
-        }
-        h1 {
-          font-size: 2rem;
-          margin-bottom: 20px;
-        }
-        p {
-          font-size: 1.2rem;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>✅ Email Verified Successfully!</h1>
-      <p>You can now return to the Trupee app.</p>
-    </body>
-    </html>
-  `);
-});
-
 
 // API routes
 app.use("/api/auth", authRoutes);
