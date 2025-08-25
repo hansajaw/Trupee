@@ -2,7 +2,9 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
-const userSchema = new mongoose.Schema(
+const { Schema, models, model } = mongoose;
+
+const userSchema = new Schema(
   {
     userName: {
       type: String,
@@ -29,14 +31,14 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
       select: false,
     },
-    fullName: String,
+    fullName: { type: String, trim: true },
     phone: String,
     bio: String,
     profileImage: String,
 
     // Email verification
     isVerified: { type: Boolean, default: false },
-    emailVerifyToken: String,
+    emailVerifyToken: String,   // stores HASH
     emailVerifyExpires: Date,
   },
   {
@@ -45,8 +47,8 @@ const userSchema = new mongoose.Schema(
       transform(_doc, ret) {
         ret.id = ret._id?.toString();
         delete ret._id;
-        delete ret.password;
         delete ret.__v;
+        delete ret.password;
         delete ret.emailVerifyToken;
         delete ret.emailVerifyExpires;
         return ret;
@@ -55,10 +57,14 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ userName: 1 }, { unique: true });
-
 userSchema.pre("save", async function (next) {
+  if (this.isModified("email") && this.email) {
+    this.email = this.email.toLowerCase().trim();
+  }
+  if (this.isModified("userName") && this.userName) {
+    this.userName = this.userName.toLowerCase().trim();
+  }
+
   if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -74,6 +80,7 @@ userSchema.pre("findOneAndUpdate", async function (next) {
       : undefined);
 
   if (!nextPassword) return next();
+
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash(nextPassword, salt);
   if (update.password) update.password = hashed;
@@ -83,16 +90,21 @@ userSchema.pre("findOneAndUpdate", async function (next) {
 });
 
 userSchema.methods.comparePassword = async function (candidate) {
-  if (!this.password) return false;
+  if (!this.password) return false; // remember .select("+password")
   return bcrypt.compare(candidate, this.password);
 };
 
-// Helper to set a verify token
+// Create verify token: store HASH in DB, return RAW for email link
 userSchema.methods.createEmailVerifyToken = function () {
-  const token = crypto.randomBytes(32).toString("hex");
-  this.emailVerifyToken = token;
-  this.emailVerifyExpires = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24h
-  return token;
+  const raw = crypto.randomBytes(32).toString("hex");
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  this.emailVerifyToken = hash;
+  this.emailVerifyExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+  return raw;
 };
 
-export default mongoose.model("User", userSchema);
+userSchema.statics.findByEmailWithPassword = function (email) {
+  return this.findOne({ email: email.toLowerCase().trim() }).select("+password");
+};
+
+export default models.User || model("User", userSchema);

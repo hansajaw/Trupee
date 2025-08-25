@@ -6,38 +6,40 @@ import { sendMail } from "../lib/mailer.js";
 
 const router = express.Router();
 
-const API_BASE = process.env.API_BASE_URL || "http://localhost:3000";
-const WEB_BASE = process.env.WEB_BASE_URL || "http://localhost:5173";
+const API_URL = process.env.API_URL || "http://localhost:3000";
+const POST_VERIFY_REDIRECT_URL =
+  process.env.POST_VERIFY_REDIRECT_URL || "http://localhost:5173/verified";
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+}
 
 function verificationEmail({ name, url }) {
   const subject = "Verify your Trupee email";
-  const safeName = escapeHtml(name || "there");
+  const safe = escapeHtml(name || "there");
   const html = `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
     <div style="max-width:560px;margin:auto;padding:24px;border-radius:12px;background:#fff;border:1px solid #eee">
-      <h2 style="margin:0 0 12px;">Hi ${safeName} 👋</h2>
+      <h2 style="margin:0 0 12px;">Hi ${safe} 👋</h2>
       <p>Please verify your email to finish creating your <b>Trupee</b> account.</p>
       <p style="margin:18px 0">
-        <a href="${url}" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600">Verify Email</a>
+        <a href="${url}" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600">
+          Verify Email
+        </a>
       </p>
       <p style="font-size:12px;color:#666">If the button doesn’t work, copy and paste this link:<br>
-        <span style="word-break:break-all;color:#333">${url}</span></p>
+        <span style="word-break:break-all;color:#333">${url}</span>
+      </p>
     </div>
-    <p style="text-align:center;color:#999;font-size:12px;margin-top:12px">
-      You received this because an account was created with your email on Trupee.
-    </p>
   </body></html>`;
-  const text = `Hi ${name || "there"},\n\nVerify your Trupee email:\n${url}\n\nIf you didn't request this, you can ignore this email.`;
+  const text = `Verify your Trupee email:\n${url}\n\nIf you didn't request this, ignore this email.`;
   return { subject, html, text };
 }
 
-const escapeHtml = (s) =>
-  String(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
-
 async function issueAndEmailVerification(user) {
-  const rawToken = user.createEmailVerifyToken(); 
+  const rawToken = user.createEmailVerifyToken();
   await user.save();
 
-  const url = `${API_BASE}/api/auth/verify?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(
+  const url = `${API_URL}/api/auth/verify?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(
     user.email
   )}`;
   const { subject, html, text } = verificationEmail({
@@ -45,43 +47,35 @@ async function issueAndEmailVerification(user) {
     url,
   });
 
+  // NOTE: while Postmark is in test mode, 'to' must be @trupee.me
   await sendMail({ to: user.email, subject, html, text });
 }
 
+// POST /api/auth/register
 router.post("/register", async (req, res) => {
   try {
     const { email, userName, fullName, password } = req.body || {};
     if (!email || !userName || !password) {
-      return res.status(400).json({ message: "userName, email, and password are required" });
+      return res.status(400).json({ message: "userName, email and password are required" });
     }
 
-    const normalizedEmail = String(email).toLowerCase().trim();
-    const normalizedUserName = String(userName).toLowerCase().trim();
+    const e = String(email).toLowerCase().trim();
+    const u = String(userName).toLowerCase().trim();
 
-    let user = await User.findOne({ email: normalizedEmail });
-    if (user) {
-      return res.status(409).json({ message: "Email already in use" });
-    }
-    if (await User.findOne({ userName: normalizedUserName })) {
-      return res.status(409).json({ message: "Username already in use" });
-    }
+    if (await User.findOne({ email: e })) return res.status(409).json({ message: "Email already in use" });
+    if (await User.findOne({ userName: u })) return res.status(409).json({ message: "Username already in use" });
 
-    user = await User.create({
-      email: normalizedEmail,
-      userName: normalizedUserName,
-      fullName,
-      password, 
-      isVerified: false,
-    });
+    const user = await User.create({ email: e, userName: u, fullName, password, isVerified: false });
 
     await issueAndEmailVerification(user);
     return res.json({ ok: true, message: "Verification email sent" });
-  } catch (e) {
-    console.error("register error", e);
+  } catch (err) {
+    console.error("register error", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// POST /api/auth/resend
 router.post("/resend", async (req, res) => {
   try {
     const { email } = req.body || {};
@@ -93,12 +87,13 @@ router.post("/resend", async (req, res) => {
 
     await issueAndEmailVerification(user);
     return res.json({ ok: true, message: "Verification email resent" });
-  } catch (e) {
-    console.error("resend error", e);
+  } catch (err) {
+    console.error("resend error", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
 
+// GET /api/auth/verify
 router.get("/verify", async (req, res) => {
   try {
     const { token, email } = req.query || {};
@@ -118,18 +113,23 @@ router.get("/verify", async (req, res) => {
     user.emailVerifyExpires = undefined;
     await user.save();
 
-    const authJwt = jwt.sign({ sub: user._id.toString(), email: user.email }, process.env.JWT_SECRET, {
+    // optionally issue a session token
+    const jwtToken = jwt.sign({ sub: user._id.toString(), email: user.email }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
-    const redirectUrl = `${WEB_BASE}/verified?email=${encodeURIComponent(user.email)}&ok=1`;
-    return res.redirect(redirectUrl);
-  } catch (e) {
-    console.error("verify error", e);
+    // redirect to your success page
+    const redirect = `${POST_VERIFY_REDIRECT_URL}?email=${encodeURIComponent(user.email)}&ok=1`;
+    // Example cookie (same-site):
+    // res.cookie('auth', jwtToken, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 7*24*3600*1000 });
+    return res.redirect(redirect);
+  } catch (err) {
+    console.error("verify error", err);
     return res.status(500).send("Server error");
   }
 });
 
+// POST /api/auth/login
 router.post("/login", async (req, res) => {
   try {
     const { emailOrUserName, password } = req.body || {};
@@ -154,8 +154,8 @@ router.post("/login", async (req, res) => {
       expiresIn: "7d",
     });
     return res.json({ ok: true, token, user: user.toJSON() });
-  } catch (e) {
-    console.error("login error", e);
+  } catch (err) {
+    console.error("login error", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
