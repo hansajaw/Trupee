@@ -22,24 +22,21 @@ function getTransport() {
 
 export async function sendMail({ to, subject, html, text }) {
   const t = getTransport();
-
-  // Use Postmark's default transactional stream unless you created a custom one
-  const headers = {};
-  const stream = process.env.POSTMARK_STREAM || "outbound"; // or just omit the header entirely
-  if (stream) headers["X-PM-Message-Stream"] = stream;
-
   try {
     return await t.sendMail({
       from: process.env.MAIL_FROM || "Trupee <no-reply@trupee.me>",
-      to,
-      subject,
-      html,
-      text,
-      headers,
+      to, subject, html, text,
+      // headers: { "X-PM-Message-Stream": "outbound" }, // only if you want it
     });
   } catch (err) {
-    // Surface the real SMTP error so your API doesn't just say "Internal server error"
-    console.error("Email send failed:", err?.response || err?.message || err);
-    throw err;
+    console.error("Email send failed:", {
+      message: err?.message,
+      code: err?.code,
+      command: err?.command,
+      response: err?.response,        // Postmark SMTP explanation
+      responseCode: err?.responseCode // numeric SMTP code
+    });
+    throw err; // keeps your current 500 so you notice it
   }
 }
+
