@@ -1,68 +1,187 @@
-// Backend/index.js
-import "dotenv/config";
+// Backend/routes/authRoutes.js
 import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import mongoose from "mongoose";
-import authRoutes from "./routes/authRoutes.js";
-import { sendMail } from "./lib/mailer.js";
+import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+import { sendMail } from "../lib/mailer.js";
 
-const app = express();
-const PORT = Number(process.env.PORT || 3000);
-const MONGO_URL = process.env.MONGO_URL;
+const router = express.Router();
 
-app.disable("x-powered-by");
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));
-app.use(express.json());
-app.set("trust proxy", 1);
+const API_URL = process.env.API_URL || "http://localhost:3000";
+const POST_VERIFY_REDIRECT_URL =
+  process.env.POST_VERIFY_REDIRECT_URL || "http://localhost:5173/verified";
 
-// --- DB ---
-if (!MONGO_URL) {
-  console.error("Missing MONGO_URL in env");
-  process.exit(1);
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (m) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]
+  ));
 }
-await mongoose.connect(MONGO_URL);
-console.log("Connected to MongoDB");
 
-// --- routes ---
-app.use("/api/auth", authRoutes);
+function verificationEmail({ name, url }) {
+  const subject = "Verify your Trupee email";
+  const safe = escapeHtml(name || "there");
+  const html = `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
+    <div style="max-width:560px;margin:auto;padding:24px;border-radius:12px;background:#fff;border:1px solid #eee">
+      <h2 style="margin:0 0 12px;">Hi ${safe} 👋</h2>
+      <p>Please verify your email to finish creating your <b>Trupee</b> account.</p>
+      <p style="margin:18px 0">
+        <a href="${url}" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600">
+          Verify Email
+        </a>
+      </p>
+      <p style="font-size:12px;color:#666">If the button doesn’t work, copy and paste this link:<br>
+        <span style="word-break:break-all;color:#333">${url}</span>
+      </p>
+    </div>
+  </body></html>`;
+  const text = `Verify your Trupee email:\n${url}\n\nIf you didn't request this, ignore this email.`;
+  return { subject, html, text };
+}
 
-// health
-app.get("/ping", (_, res) => res.send("pong"));
+async function issueAndEmailVerification(user) {
+  const rawToken = user.createEmailVerifyToken();
+  await user.save();
 
-// TEMP: env check (remove later)
-app.get("/__env-check", (req, res) => {
-  res.json({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    user_sample: (process.env.SMTP_USER || "").slice(0, 12) + "…",
-    from: process.env.MAIL_FROM,
-    replyTo: process.env.REPLY_TO || "(none)",
+  const url = `${API_URL}/api/auth/verify?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(
+    user.email
+  )}`;
+
+  const { subject, html, text } = verificationEmail({
+    name: user.fullName || user.userName || user.email.split("@")[0],
+    url,
   });
-});
 
-// TEMP: SMTP test (remove later)
-app.get("/__smtp-test", async (req, res) => {
+  if (process.env.SKIP_EMAIL === "true") {
+    console.warn("SKIP_EMAIL=true — not sending verification email.");
+    return { sent: false, error: "SKIP_EMAIL=true" };
+  }
+
   try {
-    const info = await sendMail({
-      to: "wickramahansaja@gmail.com",
-      subject: "Trupee SMTP (Brevo) test",
-      text: "If you see this, SMTP reached Brevo.",
-      html: "<p>If you see this, SMTP reached Brevo.</p>",
+    await sendMail({ to: user.email, subject, html, text });
+    return { sent: true };
+  } catch (err) {
+    // Do not throw here; keep user creation successful and return a dev note
+    console.error("sendMail failed:", err?.response || err?.message || err);
+    return { sent: false, error: err?.message || "sendMail failed" };
+  }
+}
+
+// POST /api/auth/register
+router.post("/register", async (req, res) => {
+  try {
+    const { email, userName, fullName, password } = req.body || {};
+    if (!email || !userName || !password) {
+      return res.status(400).json({ message: "userName, email and password are required" });
+    }
+
+    const e = String(email).toLowerCase().trim();
+    const u = String(userName).toLowerCase().trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      return res.status(400).json({ message: "Invalid email" });
+    }
+    if (!/^[a-z0-9._-]{3,32}$/.test(u)) {
+      return res.status(400).json({ message: "Invalid username format" });
+    }
+
+    if (await User.findOne({ email: e })) return res.status(409).json({ message: "Email already in use" });
+    if (await User.findOne({ userName: u })) return res.status(409).json({ message: "Username already in use" });
+
+    const user = await User.create({ email: e, userName: u, fullName, password, isVerified: false });
+
+    const { sent, error } = await issueAndEmailVerification(user);
+    return res.json({
+      ok: true,
+      message: sent ? "Verification email sent" : "User created; email not sent",
+      ...(error ? { devNote: error } : {}),
     });
-    res.json({ ok: true, response: info?.response, messageId: info?.messageId });
-  } catch (e) {
-    res.status(500).json({
-      ok: false,
-      message: e?.message,
-      code: e?.code,
-      response: e?.response,
-      responseCode: e?.responseCode,
-    });
+  } catch (err) {
+    console.error("register error", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
-app.listen(PORT, () => {
-  console.log("Server listening on", PORT);
+// POST /api/auth/resend
+router.post("/resend", async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ message: "email required" });
+
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (user.isVerified) return res.json({ ok: true, message: "Already verified" });
+
+    const { sent, error } = await issueAndEmailVerification(user);
+    return res.json({
+      ok: true,
+      message: sent ? "Verification email resent" : "Could not send verification email",
+      ...(error ? { devNote: error } : {}),
+    });
+  } catch (err) {
+    console.error("resend error", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
+
+// GET /api/auth/verify
+router.get("/verify", async (req, res) => {
+  try {
+    const { token, email } = req.query || {};
+    if (!token || !email) return res.status(400).send("Missing parameters");
+
+    const tokenHash = crypto.createHash("sha256").update(String(token)).digest("hex");
+    const user = await User.findOne({
+      email: String(email).toLowerCase().trim(),
+      emailVerifyToken: tokenHash,
+      emailVerifyExpires: { $gt: new Date() },
+    });
+
+    if (!user) return res.status(400).send("Invalid or expired token");
+
+    user.isVerified = true;
+    user.emailVerifyToken = undefined;
+    user.emailVerifyExpires = undefined;
+    await user.save();
+
+    const jwtSecret = process.env.JWT_SECRET || "dev-only-secret";
+    const jwtToken = jwt.sign({ sub: user._id.toString(), email: user.email }, jwtSecret, { expiresIn: "7d" });
+    // res.cookie('auth', jwtToken, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 7*24*3600*1000 });
+
+    const redirect = `${POST_VERIFY_REDIRECT_URL}?email=${encodeURIComponent(user.email)}&ok=1`;
+    return res.redirect(redirect);
+  } catch (err) {
+    console.error("verify error", err);
+    return res.status(500).send("Server error");
+  }
+});
+
+// POST /api/auth/login
+router.post("/login", async (req, res) => {
+  try {
+    const { emailOrUserName, password } = req.body || {};
+    if (!emailOrUserName || !password) return res.status(400).json({ message: "Missing credentials" });
+
+    const q = emailOrUserName.includes("@")
+      ? { email: String(emailOrUserName).toLowerCase().trim() }
+      : { userName: String(emailOrUserName).toLowerCase().trim() };
+
+    const user = await User.findOne(q).select("+password");
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+    const ok = await user.comparePassword(password);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: "Email not verified. Please verify your email." });
+    }
+
+    const jwtSecret = process.env.JWT_SECRET || "dev-only-secret";
+    const token = jwt.sign({ sub: user._id.toString(), email: user.email }, jwtSecret, { expiresIn: "7d" });
+    return res.json({ ok: true, token, user: user.toJSON() });
+  } catch (err) {
+    console.error("login error", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+export default router;

@@ -17,31 +17,27 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));
 app.use(express.json());
 app.set("trust proxy", 1);
 
-// routes
 app.use("/api/auth", authRoutes);
 
-// health
 app.get("/ping", (_, res) => res.send("pong"));
 
-// TEMP: env check (remove later)
+// Optional debug
 app.get("/__env-check", (req, res) => {
   res.json({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,
     user_sample: (process.env.SMTP_USER || "").slice(0, 12) + "…",
     from: process.env.MAIL_FROM,
-    replyTo: process.env.REPLY_TO || "(none)",
   });
 });
 
-// TEMP: SMTP test (remove later)
 app.get("/__smtp-test", async (req, res) => {
   try {
     const info = await sendMail({
       to: "yourgmail@gmail.com",
-      subject: "Trupee SMTP (Brevo) test",
-      text: "If you see this, SMTP reached Brevo.",
-      html: "<p>If you see this, SMTP reached Brevo.</p>",
+      subject: "SMTP test",
+      text: "If you see this, SMTP works.",
+      html: "<p>If you see this, SMTP works.</p>",
     });
     res.json({ ok: true, response: info?.response, messageId: info?.messageId });
   } catch (e) {
@@ -63,9 +59,6 @@ async function start() {
 
     app.listen(PORT, () => {
       console.log("Server listening on", PORT);
-      console.log("SMTP host:", process.env.SMTP_HOST);
-      console.log("SMTP user:", (process.env.SMTP_USER || "").slice(0, 12) + "…");
-      console.log("MAIL_FROM:", process.env.MAIL_FROM);
     });
   } catch (err) {
     console.error("Startup failed:", err?.message || err);
