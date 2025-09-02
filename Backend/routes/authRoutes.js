@@ -8,9 +8,11 @@ import { sendMail } from "../lib/mailer.js";
 const router = express.Router();
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
+// Default to your own API host's /verify-success page
 const POST_VERIFY_REDIRECT_URL =
-  process.env.POST_VERIFY_REDIRECT_URL || "http://localhost:5173/verified";
+  process.env.POST_VERIFY_REDIRECT_URL || `${API_URL}/verify-success`;
 
+/* ------------------- utils ------------------- */
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]
@@ -49,6 +51,7 @@ If you didn’t request this, you can ignore this email.`;
   return { subject, html, text };
 }
 
+/* ------------- verification issuing ------------- */
 async function issueAndEmailVerification(user) {
   const rawToken = user.createEmailVerifyToken();
   await user.save();
@@ -75,6 +78,8 @@ async function issueAndEmailVerification(user) {
     return { sent: false, error: err?.message || "sendMail failed" };
   }
 }
+
+/* ------------------- routes ------------------- */
 
 // POST /api/auth/register
 router.post("/register", async (req, res) => {
@@ -112,13 +117,18 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// POST /api/auth/resend
+// POST /api/auth/resend  (accepts emailOrUserName or email)
 router.post("/resend", async (req, res) => {
   try {
-    const { email } = req.body || {};
-    if (!email) return res.status(400).json({ message: "email required" });
+    const { emailOrUserName, email } = req.body || {};
+    const identifier = String(emailOrUserName ?? email ?? "").trim();
+    if (!identifier) return res.status(400).json({ message: "email required" });
 
-    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+    const query = identifier.includes("@")
+      ? { email: identifier.toLowerCase() }
+      : { userName: identifier.toLowerCase() };
+
+    const user = await User.findOne(query);
     if (!user) return res.status(404).json({ message: "User not found" });
     if (user.isVerified) return res.json({ ok: true, message: "Already verified" });
 
@@ -154,6 +164,7 @@ router.get("/verify", async (req, res) => {
     user.emailVerifyExpires = undefined;
     await user.save();
 
+    // Optionally mint a session token for web flows
     const jwtSecret = process.env.JWT_SECRET || "dev-only-secret";
     const jwtToken = jwt.sign({ sub: user._id.toString(), email: user.email }, jwtSecret, { expiresIn: "7d" });
     // res.cookie('auth', jwtToken, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 7*24*3600*1000 });
@@ -166,15 +177,19 @@ router.get("/verify", async (req, res) => {
   }
 });
 
-// POST /api/auth/login
+// POST /api/auth/login  (accepts emailOrUserName OR email OR userName)
 router.post("/login", async (req, res) => {
   try {
-    const { emailOrUserName, password } = req.body || {};
-    if (!emailOrUserName || !password) return res.status(400).json({ message: "Missing credentials" });
+    const { emailOrUserName, email, userName, password } = req.body || {};
+    const identifier = String(emailOrUserName ?? email ?? userName ?? "").trim();
 
-    const q = emailOrUserName.includes("@")
-      ? { email: String(emailOrUserName).toLowerCase().trim() }
-      : { userName: String(emailOrUserName).toLowerCase().trim() };
+    if (!identifier || !password) {
+      return res.status(400).json({ message: "Missing credentials" });
+    }
+
+    const q = identifier.includes("@")
+      ? { email: identifier.toLowerCase() }
+      : { userName: identifier.toLowerCase() };
 
     const user = await User.findOne(q).select("+password");
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
