@@ -1,3 +1,7 @@
+// Backend/lib/mailer.js
+// Uses Brevo HTTP API first (works even if SMTP ports are blocked).
+// Falls back to SMTP ONLY if BREVO_API_KEY isn't set.
+
 import nodemailer from "nodemailer";
 
 let transport;
@@ -7,32 +11,33 @@ function getTransport() {
   transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp-relay.brevo.com",
     port,
-    secure: port === 465, // 587/2525 use STARTTLS
+    secure: port === 465, // 587/2525 use STARTTLS with secure=false
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
   });
   return transport;
 }
 
-async function sendViaSMTP(mail) {
-  const t = getTransport();
-  return t.sendMail(mail);
-}
-
 async function sendViaBrevoAPI({ to, subject, html, text }) {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) throw new Error("BREVO_API_KEY not set");
+
+  const fromRaw = process.env.MAIL_FROM || "Trupee <support@trupee.me>";
+  const senderEmail = fromRaw.match(/<([^>]+)>/)?.[1] || "support@trupee.me";
+  const senderName = (fromRaw.split("<")[0] || "Trupee").trim();
+
+  if (typeof fetch !== "function") {
+    throw new Error("Global fetch not found. Use Node 18+ or add node-fetch.");
+  }
+
   const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
-      "accept": "application/json",
+      accept: "application/json",
       "content-type": "application/json",
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: {
-        name: (process.env.MAIL_FROM || "Trupee <support@trupee.me>").split("<")[0].trim(),
-        email: (process.env.MAIL_FROM || "support@trupee.me").match(/<([^>]+)>/)?.[1] || "support@trupee.me",
-      },
+      sender: { name: senderName, email: senderEmail },
       to: [{ email: to }],
       subject,
       htmlContent: html,
@@ -40,38 +45,31 @@ async function sendViaBrevoAPI({ to, subject, html, text }) {
       replyTo: process.env.REPLY_TO || "support@trupee.me",
     }),
   });
+
   if (!resp.ok) {
     const body = await resp.text();
-    throw new Error(`Brevo API error ${resp.status}: ${body}`);
+    throw new Error(`Brevo API ${resp.status}: ${body}`);
   }
   return resp.json();
 }
 
 export async function sendMail({ to, subject, html, text }) {
-  const mail = {
+  // Prefer API (no SMTP ports needed)
+  if (process.env.BREVO_API_KEY) {
+    const r = await sendViaBrevoAPI({ to, subject, html, text });
+    console.log("MAIL SENT via Brevo API:", { to, messageId: r?.messageId || r?.message?.messageId });
+    return r;
+  }
+
+  // Fallback to SMTP if API key not set (note: your host may block SMTP)
+  const info = await getTransport().sendMail({
     from: process.env.MAIL_FROM || "Trupee <support@trupee.me>",
     to,
     subject,
     html,
     text,
     replyTo: process.env.REPLY_TO || "support@trupee.me",
-  };
-
-  // Prefer API (works even when SMTP is blocked)
-  if (process.env.BREVO_API_KEY) {
-    try {
-      const r = await sendViaBrevoAPI({ to, subject, html, text });
-      console.log("MAIL SENT via Brevo API:", { to, messageId: r?.messageId || r?.message?.messageId });
-      return r;
-    } catch (e) {
-      console.error("Brevo API send failed:", e?.message || e);
-      // optional: fall back to SMTP if you want
-      // throw e;
-    }
-  }
-
-  // Fallback to SMTP (if API not configured or API failed and you want to try SMTP)
-  const info = await sendViaSMTP(mail);
+  });
   console.log("MAIL SENT via SMTP:", { to, response: info?.response, messageId: info?.messageId });
   return info;
 }

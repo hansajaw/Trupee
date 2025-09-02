@@ -21,25 +21,27 @@ app.use("/api/auth", authRoutes);
 
 app.get("/ping", (_, res) => res.send("pong"));
 
-// Optional debug
+// Debug: env in use (no secrets)
 app.get("/__env-check", (req, res) => {
   res.json({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,
     user_sample: (process.env.SMTP_USER || "").slice(0, 12) + "…",
     from: process.env.MAIL_FROM,
+    has_brevo_api_key: Boolean(process.env.BREVO_API_KEY),
   });
 });
 
+// Test: send a real email (uses API first)
 app.get("/__smtp-test", async (req, res) => {
   try {
     const info = await sendMail({
-      to: "yourgmail@gmail.com",
-      subject: "SMTP test",
-      text: "If you see this, SMTP works.",
-      html: "<p>If you see this, SMTP works.</p>",
+      to: "wickramahansaja@gmail.com",
+      subject: "SMTP/API test",
+      text: "If you see this, delivery works.",
+      html: "<p>If you see this, delivery works.</p>",
     });
-    res.json({ ok: true, response: info?.response, messageId: info?.messageId });
+    res.json({ ok: true, info });
   } catch (e) {
     res.status(500).json({
       ok: false,
@@ -56,10 +58,7 @@ async function start() {
     if (!MONGO_URL) throw new Error("Missing MONGO_URL in env");
     await mongoose.connect(MONGO_URL);
     console.log("Connected to MongoDB");
-
-    app.listen(PORT, () => {
-      console.log("Server listening on", PORT);
-    });
+    app.listen(PORT, () => console.log("Server listening on", PORT));
   } catch (err) {
     console.error("Startup failed:", err?.message || err);
     process.exit(1);

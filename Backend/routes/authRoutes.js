@@ -17,24 +17,35 @@ function escapeHtml(s) {
   ));
 }
 
-function verificationEmail({ name, url }) {
+function buildVerificationEmail({ userName, verifyUrl }) {
   const subject = "Verify your Trupee email";
-  const safe = escapeHtml(name || "there");
-  const html = `<!doctype html><html><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
-    <div style="max-width:560px;margin:auto;padding:24px;border-radius:12px;background:#fff;border:1px solid #eee">
-      <h2 style="margin:0 0 12px;">Hi ${safe} 👋</h2>
-      <p>Please verify your email to finish creating your <b>Trupee</b> account.</p>
-      <p style="margin:18px 0">
-        <a href="${url}" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600">
-          Verify Email
-        </a>
-      </p>
-      <p style="font-size:12px;color:#666">If the button doesn’t work, copy and paste this link:<br>
-        <span style="word-break:break-all;color:#333">${url}</span>
-      </p>
-    </div>
-  </body></html>`;
-  const text = `Verify your Trupee email:\n${url}\n\nIf you didn't request this, ignore this email.`;
+  const safeName = escapeHtml(userName || "there");
+  const safeUrl = escapeHtml(String(verifyUrl || ""));
+  const html = `<!doctype html>
+<html>
+  <body style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7fb;padding:24px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;margin:auto;background:#ffffff;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,0.06);">
+      <tr><td style="padding:28px 28px 8px;">
+        <h2 style="margin:0 0 12px;">Hi ${safeName} 👋</h2>
+        <p style="margin:0;color:#444;">Thanks for signing up for <b>Trupee</b>. Please verify your email address:</p>
+        <p style="margin:20px 0;">
+          <a href="${safeUrl}" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:600;">Verify Email</a>
+        </p>
+        <p style="font-size:12px;color:#666;margin-top:22px;">
+          If the button doesn’t work, copy and paste this link:<br>
+          <span style="word-break:break-all;color:#1f2937;">${safeUrl}</span>
+        </p>
+      </td></tr>
+    </table>
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:14px;">You’re receiving this because someone used this email to sign up to Trupee.</p>
+  </body>
+</html>`;
+  const text = `Hi ${userName || "there"},
+
+Thanks for signing up for Trupee. Please verify your email:
+${verifyUrl}
+
+If you didn’t request this, you can ignore this email.`;
   return { subject, html, text };
 }
 
@@ -42,13 +53,13 @@ async function issueAndEmailVerification(user) {
   const rawToken = user.createEmailVerifyToken();
   await user.save();
 
-  const url = `${API_URL}/api/auth/verify?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(
+  const verifyUrl = `${API_URL}/api/auth/verify?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(
     user.email
   )}`;
 
-  const { subject, html, text } = verificationEmail({
-    name: user.fullName || user.userName || user.email.split("@")[0],
-    url,
+  const { subject, html, text } = buildVerificationEmail({
+    userName: user.fullName || user.userName || user.email.split("@")[0],
+    verifyUrl,
   });
 
   if (process.env.SKIP_EMAIL === "true") {
@@ -60,8 +71,7 @@ async function issueAndEmailVerification(user) {
     await sendMail({ to: user.email, subject, html, text });
     return { sent: true };
   } catch (err) {
-    // Do not throw here; keep user creation successful and return a dev note
-    console.error("sendMail failed:", err?.response || err?.message || err);
+    console.error("sendMail failed:", err?.message || err);
     return { sent: false, error: err?.message || "sendMail failed" };
   }
 }
@@ -89,6 +99,7 @@ router.post("/register", async (req, res) => {
 
     const user = await User.create({ email: e, userName: u, fullName, password, isVerified: false });
 
+    console.log("About to send verification:", { to: user.email, url: `${API_URL}/api/auth/verify?...` });
     const { sent, error } = await issueAndEmailVerification(user);
     return res.json({
       ok: true,
