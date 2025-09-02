@@ -1,3 +1,4 @@
+// Backend/routes/authRoutes.js
 import express from "express";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
@@ -11,7 +12,9 @@ const POST_VERIFY_REDIRECT_URL =
   process.env.POST_VERIFY_REDIRECT_URL || "http://localhost:5173/verified";
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+  return String(s).replace(/[&<>"']/g, (m) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]
+  ));
 }
 
 function verificationEmail({ name, url }) {
@@ -36,8 +39,8 @@ function verificationEmail({ name, url }) {
 }
 
 /**
- * Creates a new verify token + emails it.
- * Never throws for email failures; returns { sent: boolean, error?: string }.
+ * Issues a new verification token and attempts to send an email.
+ * Never throws because of email failure; returns { sent: boolean, error?: string }.
  */
 async function issueAndEmailVerification(user) {
   const rawToken = user.createEmailVerifyToken();
@@ -46,15 +49,15 @@ async function issueAndEmailVerification(user) {
   const url = `${API_URL}/api/auth/verify?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(
     user.email
   )}`;
+
   const { subject, html, text } = verificationEmail({
     name: user.fullName || user.userName || user.email.split("@")[0],
     url,
   });
 
-  // Allow skipping email in dev
   if (process.env.SKIP_EMAIL === "true") {
     console.warn("SKIP_EMAIL is true — not sending verification email.");
-    return { sent: false };
+    return { sent: false, error: "SKIP_EMAIL=true" };
   }
 
   try {
@@ -145,7 +148,7 @@ router.get("/verify", async (req, res) => {
 
     const jwtSecret = process.env.JWT_SECRET || "dev-only-secret";
     const jwtToken = jwt.sign({ sub: user._id.toString(), email: user.email }, jwtSecret, { expiresIn: "7d" });
-    // If you want a cookie, set it here (httpOnly, secure, sameSite etc.)
+    // If you want to set a session cookie, do it here with httpOnly, secure, sameSite, etc.
 
     const redirect = `${POST_VERIFY_REDIRECT_URL}?email=${encodeURIComponent(user.email)}&ok=1`;
     return res.redirect(redirect);

@@ -5,30 +5,39 @@ let transport;
 
 function getTransport() {
   if (transport) return transport;
+
   const port = Number(process.env.SMTP_PORT || 587);
+
   transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST || "smtp.postmarkapp.com",
     port,
-    secure: port === 465, // 587 uses STARTTLS
+    // 587 uses STARTTLS (secure=false); 465 is SMTPS (secure=true)
+    secure: port === 465,
     auth: {
-      user: process.env.SMTP_USER, // Postmark Server API token
-      pass: process.env.SMTP_PASS, // same token
+      // For Postmark, BOTH user & pass are your Server API token
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
+
   return transport;
 }
 
+/**
+ * Send an email via SMTP.
+ * If POSTMARK_STREAM is set (e.g., "outbound"), we pass it;
+ * otherwise we omit the header entirely (Postmark defaults to "outbound").
+ */
 export async function sendMail({ to, subject, html, text }) {
   const t = getTransport();
 
-  // Only set stream header if you actually configured it (default is 'outbound')
   const headers = {};
   if (process.env.POSTMARK_STREAM) {
-    headers["X-PM-Message-Stream"] = process.env.POSTMARK_STREAM; // e.g. 'outbound'
+    headers["X-PM-Message-Stream"] = process.env.POSTMARK_STREAM; // e.g., 'outbound'
   }
 
   try {
-    return await t.sendMail({
+    const info = await t.sendMail({
       from: process.env.MAIL_FROM || "Trupee <no-reply@trupee.me>",
       to,
       subject,
@@ -36,6 +45,15 @@ export async function sendMail({ to, subject, html, text }) {
       text,
       headers,
     });
+
+    // Useful when debugging deployments
+    console.log("MAIL SENT:", {
+      to,
+      response: info?.response,
+      messageId: info?.messageId,
+    });
+
+    return info;
   } catch (err) {
     console.error("Email send failed:", {
       message: err?.message,
