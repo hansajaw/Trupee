@@ -9,14 +9,14 @@ function getTransport() {
   const port = Number(process.env.SMTP_PORT || 587);
 
   transport = nodemailer.createTransport({
-    host: process.env.SMTPhOST || process.env.SMTP_HOST || "smtp-relay.brevo.com",
+    host: process.env.SMTP_HOST || "smtp-relay.brevo.com", // <- fixed key
     port,
     // 587 uses STARTTLS (secure=false). 465 is SMTPS (secure=true)
     secure: port === 465,
     auth: {
-      // Brevo SMTP:
-      //   user = your Brevo SMTP login (looks like 123456789@smtp-brevo.com)
-      //   pass = your Brevo SMTP key value
+      // Brevo:
+      //   user = your Brevo SMTP login (e.g. 962028001@smtp-brevo.com)
+      //   pass = your Brevo SMTP key
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
@@ -26,8 +26,8 @@ function getTransport() {
 }
 
 /**
- * Send a plain transactional email.
- * replyTo is optional (set REPLY_TO env if you want replies).
+ * Send transactional email.
+ * Optionally set REPLY_TO in env.
  */
 export async function sendMail({ to, subject, html, text }) {
   const t = getTransport();

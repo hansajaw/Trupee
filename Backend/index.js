@@ -5,6 +5,7 @@ import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
+import { sendMail } from "./lib/mailer.js";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -16,42 +17,31 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));
 app.use(express.json());
 app.set("trust proxy", 1);
 
-// --- DB ---
-if (!MONGO_URL) {
-  console.error("Missing MONGO_URL in env");
-  process.exit(1);
-}
-await mongoose.connect(MONGO_URL);
-console.log("Connected to MongoDB");
-
-// --- routes ---
+// routes
 app.use("/api/auth", authRoutes);
 
-// health + debug
+// health
 app.get("/ping", (_, res) => res.send("pong"));
 
-// Debug: show which SMTP token/server your app is actually using
+// TEMP: env check (remove later)
 app.get("/__env-check", (req, res) => {
   res.json({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT,
-    user_prefix: (process.env.SMTP_USER || "").slice(0, 8) + "…",
+    user_sample: (process.env.SMTP_USER || "").slice(0, 12) + "…",
     from: process.env.MAIL_FROM,
-    stream: process.env.POSTMARK_STREAM || "(none)",
-    skip_email: process.env.SKIP_EMAIL || "false",
-    api_url: process.env.API_URL,
+    replyTo: process.env.REPLY_TO || "(none)",
   });
 });
 
-// Optional one-off direct send test (remove in prod)
-import { sendMail } from "./lib/mailer.js";
+// TEMP: SMTP test (remove later)
 app.get("/__smtp-test", async (req, res) => {
   try {
     const info = await sendMail({
       to: "yourgmail@gmail.com",
-      subject: "Trupee SMTP test",
-      text: "If you see this, SMTP reached Postmark.",
-      html: "<p>If you see this, SMTP reached Postmark.</p>",
+      subject: "Trupee SMTP (Brevo) test",
+      text: "If you see this, SMTP reached Brevo.",
+      html: "<p>If you see this, SMTP reached Brevo.</p>",
     });
     res.json({ ok: true, response: info?.response, messageId: info?.messageId });
   } catch (e) {
@@ -65,8 +55,22 @@ app.get("/__smtp-test", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log("Server listening on", PORT);
-  console.log("SMTP token prefix:", (process.env.SMTP_USER || "").slice(0, 8) + "…");
-  console.log("Stream:", process.env.POSTMARK_STREAM || "(none)");
-});
+async function start() {
+  try {
+    if (!MONGO_URL) throw new Error("Missing MONGO_URL in env");
+    await mongoose.connect(MONGO_URL);
+    console.log("Connected to MongoDB");
+
+    app.listen(PORT, () => {
+      console.log("Server listening on", PORT);
+      console.log("SMTP host:", process.env.SMTP_HOST);
+      console.log("SMTP user:", (process.env.SMTP_USER || "").slice(0, 12) + "…");
+      console.log("MAIL_FROM:", process.env.MAIL_FROM);
+    });
+  } catch (err) {
+    console.error("Startup failed:", err?.message || err);
+    process.exit(1);
+  }
+}
+
+start();
