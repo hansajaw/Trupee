@@ -1,4 +1,5 @@
-export const API_URL = "https://trupee-production.up.railway.app"; // or from process.env if you use Expo env
+// Mobile/lib/api.js
+export const API_URL = "https://trupee-production.up.railway.app"; // one source of truth
 
 async function handle(r) {
   const data = await r.json().catch(() => ({}));
@@ -16,7 +17,7 @@ export async function register({ email, userName, fullName, password }) {
 }
 
 export async function resendVerification({ email }) {
-  const r = await fetch(`${API_URL}/api/auth/resend`, {   // <- correct path
+  const r = await fetch(`${API_URL}/api/auth/resend`, {   // correct route
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
