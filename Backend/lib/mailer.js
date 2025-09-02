@@ -23,11 +23,13 @@ async function sendViaBrevoAPI({ to, subject, html, text }) {
 
   const fromRaw = process.env.MAIL_FROM || "Trupee <support@trupee.me>";
   const senderEmail = fromRaw.match(/<([^>]+)>/)?.[1] || "support@trupee.me";
-  const senderName = (fromRaw.split("<")[0] || "Trupee").trim();
+  const senderName  = (fromRaw.split("<")[0] || "Trupee").trim();
 
-  if (typeof fetch !== "function") {
-    throw new Error("Global fetch not found. Use Node 18+ or add node-fetch.");
-  }
+  const replyToEmail = (process.env.REPLY_TO || senderEmail).trim();
+  const replyTo =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyToEmail)
+      ? { email: replyToEmail, name: senderName }
+      : undefined; // omit if invalid
 
   const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -37,12 +39,12 @@ async function sendViaBrevoAPI({ to, subject, html, text }) {
       "api-key": apiKey,
     },
     body: JSON.stringify({
-      sender: { name: senderName, email: senderEmail },
-      to: [{ email: to }],
+      sender:   { name: senderName, email: senderEmail },
+      to:       [{ email: to }],
       subject,
       htmlContent: html,
       textContent: text,
-      replyTo: process.env.REPLY_TO || "support@trupee.me",
+      ...(replyTo ? { replyTo } : {}),   // <-- object, not string
     }),
   });
 
@@ -52,6 +54,7 @@ async function sendViaBrevoAPI({ to, subject, html, text }) {
   }
   return resp.json();
 }
+
 
 export async function sendMail({ to, subject, html, text }) {
   // Prefer API (no SMTP ports needed)
