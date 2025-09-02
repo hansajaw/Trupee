@@ -35,6 +35,10 @@ function verificationEmail({ name, url }) {
   return { subject, html, text };
 }
 
+/**
+ * Creates a new verify token + emails it.
+ * Never throws for email failures; returns { sent: boolean, error?: string }.
+ */
 async function issueAndEmailVerification(user) {
   const rawToken = user.createEmailVerifyToken();
   await user.save();
@@ -47,8 +51,19 @@ async function issueAndEmailVerification(user) {
     url,
   });
 
-  // NOTE: while Postmark is in test mode, 'to' must be @trupee.me
-  await sendMail({ to: user.email, subject, html, text });
+  // Allow skipping email in dev
+  if (process.env.SKIP_EMAIL === "true") {
+    console.warn("SKIP_EMAIL is true — not sending verification email.");
+    return { sent: false };
+  }
+
+  try {
+    await sendMail({ to: user.email, subject, html, text });
+    return { sent: true };
+  } catch (err) {
+    console.error("issueAndEmailVerification: sendMail failed:", err?.response || err?.message || err);
+    return { sent: false, error: err?.message || "sendMail failed" };
+  }
 }
 
 // POST /api/auth/register
@@ -62,13 +77,24 @@ router.post("/register", async (req, res) => {
     const e = String(email).toLowerCase().trim();
     const u = String(userName).toLowerCase().trim();
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      return res.status(400).json({ message: "Invalid email" });
+    }
+    if (!/^[a-z0-9._-]{3,32}$/.test(u)) {
+      return res.status(400).json({ message: "Invalid username format" });
+    }
+
     if (await User.findOne({ email: e })) return res.status(409).json({ message: "Email already in use" });
     if (await User.findOne({ userName: u })) return res.status(409).json({ message: "Username already in use" });
 
     const user = await User.create({ email: e, userName: u, fullName, password, isVerified: false });
 
-    await issueAndEmailVerification(user);
-    return res.json({ ok: true, message: "Verification email sent" });
+    const { sent, error } = await issueAndEmailVerification(user);
+    return res.json({
+      ok: true,
+      message: sent ? "Verification email sent" : "User created; email not sent",
+      ...(error ? { devNote: error } : {}),
+    });
   } catch (err) {
     console.error("register error", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -85,8 +111,12 @@ router.post("/resend", async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
     if (user.isVerified) return res.json({ ok: true, message: "Already verified" });
 
-    await issueAndEmailVerification(user);
-    return res.json({ ok: true, message: "Verification email resent" });
+    const { sent, error } = await issueAndEmailVerification(user);
+    return res.json({
+      ok: true,
+      message: sent ? "Verification email resent" : "Could not send verification email",
+      ...(error ? { devNote: error } : {}),
+    });
   } catch (err) {
     console.error("resend error", err);
     return res.status(500).json({ message: "Internal server error" });
@@ -113,15 +143,11 @@ router.get("/verify", async (req, res) => {
     user.emailVerifyExpires = undefined;
     await user.save();
 
-    // optionally issue a session token
-    const jwtToken = jwt.sign({ sub: user._id.toString(), email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const jwtSecret = process.env.JWT_SECRET || "dev-only-secret";
+    const jwtToken = jwt.sign({ sub: user._id.toString(), email: user.email }, jwtSecret, { expiresIn: "7d" });
+    // If you want a cookie, set it here (httpOnly, secure, sameSite etc.)
 
-    // redirect to your success page
     const redirect = `${POST_VERIFY_REDIRECT_URL}?email=${encodeURIComponent(user.email)}&ok=1`;
-    // Example cookie (same-site):
-    // res.cookie('auth', jwtToken, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 7*24*3600*1000 });
     return res.redirect(redirect);
   } catch (err) {
     console.error("verify error", err);
@@ -135,10 +161,9 @@ router.post("/login", async (req, res) => {
     const { emailOrUserName, password } = req.body || {};
     if (!emailOrUserName || !password) return res.status(400).json({ message: "Missing credentials" });
 
-    const q =
-      emailOrUserName.includes("@")
-        ? { email: String(emailOrUserName).toLowerCase().trim() }
-        : { userName: String(emailOrUserName).toLowerCase().trim() };
+    const q = emailOrUserName.includes("@")
+      ? { email: String(emailOrUserName).toLowerCase().trim() }
+      : { userName: String(emailOrUserName).toLowerCase().trim() };
 
     const user = await User.findOne(q).select("+password");
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
@@ -150,9 +175,8 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ message: "Email not verified. Please verify your email." });
     }
 
-    const token = jwt.sign({ sub: user._id.toString(), email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const jwtSecret = process.env.JWT_SECRET || "dev-only-secret";
+    const token = jwt.sign({ sub: user._id.toString(), email: user.email }, jwtSecret, { expiresIn: "7d" });
     return res.json({ ok: true, token, user: user.toJSON() });
   } catch (err) {
     console.error("login error", err);
