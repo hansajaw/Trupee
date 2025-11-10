@@ -14,26 +14,40 @@ if (!MONGO_URL) {
   throw new Error("Missing MONGO_URL in env");
 }
 
-mongoose.connect(MONGO_URL).then(() => {
-  console.log("Connected to MongoDB");
-}).catch((err) => {
-  console.error("Startup failed:", err?.message || err);
-  process.exit(1);
-});
+/* ------------------------------------------------------------------
+   ✅ Vercel-Safe MongoDB Connection (prevents repeated reconnects)
+------------------------------------------------------------------ */
+let isConnected = false;
+async function connectDB() {
+  if (isConnected) return;
+  try {
+    const db = await mongoose.connect(MONGO_URL);
+    isConnected = db.connections[0].readyState;
+    console.log("✅ Connected to MongoDB");
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err.message);
+  }
+}
+await connectDB();
 
+/* ------------------------------------------------------------------
+   ✅ Middleware
+------------------------------------------------------------------ */
 app.disable("x-powered-by");
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));
 app.use(express.json());
 app.set("trust proxy", 1);
 
-// API routes
+/* ------------------------------------------------------------------
+   ✅ Routes
+------------------------------------------------------------------ */
 app.use("/api/auth", authRoutes);
 
-// health
+// Health check
 app.get("/ping", (_req, res) => res.send("pong"));
 
-/* ---------- NEW: verification success page ---------- */
+/* ---------- Email verification success page ---------- */
 app.get("/verify-success", (req, res) => {
   const email = String(req.query.email || "");
   const safeEmail = email.replace(/[&<>"']/g, (m) => (
@@ -58,9 +72,10 @@ app.get("/verify-success", (req, res) => {
   </body>
 </html>`);
 });
-/* --------------------------------------------------- */
 
-// Debug: env in use (no secrets)
+/* ------------------------------------------------------------------
+   ✅ Diagnostic routes
+------------------------------------------------------------------ */
 app.get("/__env-check", (_req, res) => {
   res.json({
     host: process.env.SMTP_HOST,
@@ -71,7 +86,6 @@ app.get("/__env-check", (_req, res) => {
   });
 });
 
-// Test: send a real email (uses API first)
 app.get("/__smtp-test", async (_req, res) => {
   try {
     const info = await sendMail({
@@ -90,6 +104,16 @@ app.get("/__smtp-test", async (_req, res) => {
       responseCode: e?.responseCode,
     });
   }
+});
+
+/* ------------------------------------------------------------------
+   ✅ Fallback 404 and Error Handlers
+------------------------------------------------------------------ */
+app.use((_req, res) => res.status(404).json({ error: "Route not found" }));
+
+app.use((err, _req, res, _next) => {
+  console.error("Internal error:", err);
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 export default app;
