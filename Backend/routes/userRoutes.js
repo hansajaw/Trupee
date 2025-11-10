@@ -11,8 +11,8 @@ const requireAuth = (req, res, next) => {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return res.status(401).json({ message: "Unauthorized" });
   try {
-    const { userId } = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = userId;
+    const { sub } = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = sub;
     next();
   } catch {
     return res.status(401).json({ message: "Invalid token" });
