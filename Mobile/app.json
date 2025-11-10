@@ -42,7 +42,7 @@
 
     "extra": {
       "router": {},
-      "API_URL": "https://trupee-api.vercel.app", 
+      "API_URL": "https://trupee.vercel.app", 
       "eas": {
         "projectId": "3d5cc885-eec5-42ed-8ed6-173e2b61ce89"
       }

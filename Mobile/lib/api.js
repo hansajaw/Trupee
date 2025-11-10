@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 
 // ✅ Unified backend URL (Vercel)
 export const API_URL =
-  Constants.expoConfig?.extra?.API_URL || "https://trupee-api.vercel.app";
+  Constants.expoConfig?.extra?.API_URL || "https://trupee.vercel.app";
 
 async function handle(response) {
   const data = await response.json().catch(() => ({}));

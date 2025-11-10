@@ -7,4 +7,4 @@ const DEV_BASE =
 // ✅ Automatically switch between local dev and production backend
 export const BASE_URL = __DEV__
   ? DEV_BASE
-  : "https://trupee-api.vercel.app";
+  : "https://trupee.vercel.app";
