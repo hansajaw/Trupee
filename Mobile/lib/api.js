@@ -1,9 +1,13 @@
 // Mobile/lib/api.js
-export const API_URL = "https://trupee-production.up.railway.app"; // one source of truth
+import Constants from "expo-constants";
 
-async function handle(r) {
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data?.message || `HTTP ${r.status}`);
+// ✅ Unified backend URL (Vercel)
+export const API_URL =
+  Constants.expoConfig?.extra?.API_URL || "https://trupee-api.vercel.app";
+
+async function handle(response) {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.message || `HTTP ${response.status}`);
   return data;
 }
 
@@ -17,7 +21,7 @@ export async function register({ email, userName, fullName, password }) {
 }
 
 export async function resendVerification({ email }) {
-  const r = await fetch(`${API_URL}/api/auth/resend`, {   // correct route
+  const r = await fetch(`${API_URL}/api/auth/resend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),

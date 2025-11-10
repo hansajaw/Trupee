@@ -1,7 +1,10 @@
+// Mobile/config.js
 import { Platform } from "react-native";
 
 const DEV_BASE =
-  Platform.OS === "android" ? "http://172.20.10.6:3000" : "http://localhost:3000";
+  Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000";
 
-
-export const BASE_URL = __DEV__ ? DEV_BASE : "https://trupee-production.up.railway.app";
+// ✅ Automatically switch between local dev and production backend
+export const BASE_URL = __DEV__
+  ? DEV_BASE
+  : "https://trupee-api.vercel.app";

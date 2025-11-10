@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from "react-native";
 import { useTheme } from "../context/theme-context";
 import { useTransactions } from "../context/transactions-context";
+import { formatCurrency } from "../utils/currency";
 
 export default function AllTransactionsScreen() {
   const { theme } = useTheme();
@@ -25,7 +26,7 @@ export default function AllTransactionsScreen() {
             </View>
             <View>
               <Text style={{ color: t.amount >= 0 ? theme.success : theme.error }}>
-                {formatCurrency(Math.abs(amount))}
+                {formatCurrency(Math.abs(t.amount))}
               </Text>
               {t.type === "Loan" && t.loanType === "Given" && (
                 <TouchableOpacity

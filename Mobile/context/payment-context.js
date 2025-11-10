@@ -1,5 +1,7 @@
+// Mobile/context/payment-context.js
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../config"; // centralized import
 
 const PaymentsContext = createContext();
 
@@ -10,9 +12,10 @@ export function PaymentsProvider({ children }) {
     const fetchPayments = async () => {
       try {
         const token = await AsyncStorage.getItem("authToken");
-        const res = await fetch("http://172.20.10.6:3000/api/transaction/", {
+        const res = await fetch(`${BASE_URL}/api/transaction/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         if (res.ok) {
           const data = await res.json();
           setPayments(data);
@@ -23,6 +26,7 @@ export function PaymentsProvider({ children }) {
         console.error("Error fetching payments:", error.message);
       }
     };
+
     fetchPayments();
   }, []);
 

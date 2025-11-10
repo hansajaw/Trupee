@@ -8,8 +8,18 @@ import authRoutes from "./routes/authRoutes.js";
 import { sendMail } from "./lib/mailer.js";
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
 const MONGO_URL = process.env.MONGO_URL;
+
+if (!MONGO_URL) {
+  throw new Error("Missing MONGO_URL in env");
+}
+
+mongoose.connect(MONGO_URL).then(() => {
+  console.log("Connected to MongoDB");
+}).catch((err) => {
+  console.error("Startup failed:", err?.message || err);
+  process.exit(1);
+});
 
 app.disable("x-powered-by");
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
@@ -82,16 +92,4 @@ app.get("/__smtp-test", async (_req, res) => {
   }
 });
 
-async function start() {
-  try {
-    if (!MONGO_URL) throw new Error("Missing MONGO_URL in env");
-    await mongoose.connect(MONGO_URL);
-    console.log("Connected to MongoDB");
-    app.listen(PORT, () => console.log("Server listening on", PORT));
-  } catch (err) {
-    console.error("Startup failed:", err?.message || err);
-    process.exit(1);
-  }
-}
-
-start();
+export default app;
