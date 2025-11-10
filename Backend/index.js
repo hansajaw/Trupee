@@ -5,6 +5,9 @@ import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
+import categoryRoutes from "./routes/category.js";
+import transactionRoutes from "./routes/transactionRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { sendMail } from "./lib/mailer.js";
 
 const app = express();
@@ -43,6 +46,9 @@ app.set("trust proxy", 1);
    ✅ Routes
 ------------------------------------------------------------------ */
 app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/users", userRoutes);
 
 // Health check
 app.get("/ping", (_req, res) => res.send("pong"));
