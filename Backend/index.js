@@ -11,20 +11,24 @@ import userRoutes from "./routes/userRoutes.js";
 import { sendMail } from "./lib/mailer.js";
 
 const app = express();
-const MONGO_URL = process.env.MONGO_URL;
 
-if (!MONGO_URL) {
-  throw new Error("Missing MONGO_URL in env");
+/* ------------------------------------------------------------------
+   ✅ Environment Diagnostics
+------------------------------------------------------------------ */
+console.log("🟢 Starting Trupee backend...");
+if (!process.env.MONGO_URL) {
+  console.error("❌ Missing MONGO_URL in environment variables");
+  process.exit(1);
 }
 
 /* ------------------------------------------------------------------
-   ✅ Vercel-Safe MongoDB Connection (prevents repeated reconnects)
+   ✅ MongoDB Connection (Vercel-safe)
 ------------------------------------------------------------------ */
 let isConnected = false;
 async function connectDB() {
   if (isConnected) return;
   try {
-    const db = await mongoose.connect(MONGO_URL);
+    const db = await mongoose.connect(process.env.MONGO_URL);
     isConnected = db.connections[0].readyState;
     console.log("✅ Connected to MongoDB");
   } catch (err) {
@@ -56,9 +60,9 @@ app.get("/ping", (_req, res) => res.send("pong"));
 /* ---------- Email verification success page ---------- */
 app.get("/verify-success", (req, res) => {
   const email = String(req.query.email || "");
-  const safeEmail = email.replace(/[&<>"']/g, (m) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]
-  ));
+  const safeEmail = email.replace(/[&<>"']/g, (m) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m])
+  );
 
   res.type("html").send(`<!doctype html>
 <html>
@@ -71,7 +75,11 @@ app.get("/verify-success", (req, res) => {
     <div style="text-align:center;max-width:520px;padding:24px;border-radius:16px;background:#0f172a;border:1px solid #1f2937;box-shadow:0 10px 30px rgba(0,0,0,.35)">
       <div style="font-size:44px;line-height:1;margin-bottom:8px">✅</div>
       <h2 style="margin:0 0 6px;font-size:22px;color:#fff;">Email verified</h2>
-      ${safeEmail ? `<p style="margin:0 0 12px;color:#9ca3af;">for <b style="color:#e5e7eb">${safeEmail}</b></p>` : ""}
+      ${
+        safeEmail
+          ? `<p style="margin:0 0 12px;color:#9ca3af;">for <b style="color:#e5e7eb">${safeEmail}</b></p>`
+          : ""
+      }
       <p style="margin:0 0 18px;color:#9ca3af;">You can close this tab and return to the Trupee app.</p>
       <a href="/" style="display:inline-block;background:#10b981;color:#0b1220;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:600;">Back to Home</a>
     </div>
@@ -80,15 +88,14 @@ app.get("/verify-success", (req, res) => {
 });
 
 /* ------------------------------------------------------------------
-   ✅ Diagnostic routes
+   ✅ Diagnostic Routes
 ------------------------------------------------------------------ */
 app.get("/__env-check", (_req, res) => {
   res.json({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    user_sample: (process.env.SMTP_USER || "").slice(0, 12) + "…",
-    from: process.env.MAIL_FROM,
-    has_brevo_api_key: Boolean(process.env.BREVO_API_KEY),
+    mongo: !!process.env.MONGO_URL,
+    smtp_user: process.env.SMTP_USER ? "✅" : "❌",
+    mail_from: process.env.MAIL_FROM,
+    cors_origin: process.env.CORS_ORIGIN,
   });
 });
 
@@ -96,9 +103,9 @@ app.get("/__smtp-test", async (_req, res) => {
   try {
     const info = await sendMail({
       to: "wickramahansaja@gmail.com",
-      subject: "SMTP/API test",
-      text: "If you see this, delivery works.",
-      html: "<p>If you see this, delivery works.</p>",
+      subject: "SMTP Test",
+      text: "If you see this, your SMTP config works!",
+      html: "<p>If you see this, your SMTP config works!</p>",
     });
     res.json({ ok: true, info });
   } catch (e) {
@@ -113,14 +120,23 @@ app.get("/__smtp-test", async (_req, res) => {
 });
 
 /* ------------------------------------------------------------------
-   ✅ Fallback 404 and Error Handlers
+   ✅ Error Handling
 ------------------------------------------------------------------ */
 app.use((_req, res) => res.status(404).json({ error: "Route not found" }));
-
 app.use((err, _req, res, _next) => {
   console.error("Internal error:", err);
   res.status(500).json({ error: "Internal Server Error" });
 });
 
-export default (req, res) => app(req, res);
+/* ------------------------------------------------------------------
+   ✅ Export app for Vercel
+------------------------------------------------------------------ */
+export default app;
 
+/* ------------------------------------------------------------------
+   ✅ Local Development Mode
+------------------------------------------------------------------ */
+if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => console.log(`🚀 Server running at http://localhost:${port}`));
+}
