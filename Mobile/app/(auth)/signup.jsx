@@ -17,10 +17,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../../context/theme-context";
 import { useRouter } from "expo-router";
+import { API_URL } from "../../constants/api";
 
 
 const { height } = Dimensions.get("window");
-const BASE_URL = "https://trupee-production.up.railway.app";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Signup() {
@@ -52,7 +52,7 @@ export default function Signup() {
     }
     try {
       setLoading(true);
-      const res = await fetch(`${BASE_URL}/api/auth/register`, {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
