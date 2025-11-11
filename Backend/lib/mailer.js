@@ -13,6 +13,7 @@ function getTransport() {
 
   if (!user || !pass) {
     console.error("❌ Missing SMTP credentials (SMTP_USER / SMTP_PASS)");
+    return null;
   }
 
   console.log("📨 Initializing transporter:", { host, port, user });
@@ -24,10 +25,10 @@ function getTransport() {
     auth: { user, pass },
   });
 
-  // Verify Zoho SMTP connection
+  // Verify SMTP connection immediately
   transport.verify((error, success) => {
-    if (error) console.error("❌ Zoho SMTP verification failed:", error.message);
-    else console.log("✅ Zoho SMTP transporter verified successfully");
+    if (error) console.error("❌ SMTP verification failed:", error.message);
+    else console.log("✅ SMTP transporter verified successfully");
   });
 
   return transport;
@@ -43,8 +44,19 @@ export async function sendMail({ to, subject, html, text }) {
     replyTo: process.env.REPLY_TO || "support@trupee.me",
   };
 
+  const transporter = getTransport();
+  if (!transporter) throw new Error("SMTP not configured");
+
+  // Timeout safeguard
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Mail send timeout after 10s")), 10000)
+  );
+
   try {
-    const info = await getTransport().sendMail(mailData);
+    const info = await Promise.race([
+      transporter.sendMail(mailData),
+      timeout,
+    ]);
     console.log("✅ Mail sent via Zoho:", info.response || info.messageId);
     return info;
   } catch (error) {
@@ -52,5 +64,3 @@ export async function sendMail({ to, subject, html, text }) {
     throw error;
   }
 }
-
-export default { sendMail };
