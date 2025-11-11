@@ -49,14 +49,6 @@ app.set("trust proxy", 1);
 /* ------------------------------------------------------------------
    ✅ Routes
 ------------------------------------------------------------------ */
-app.get("/", (_req, res) => {
-  res.send(`
-    <h2>🚀 Trupee Backend API</h2>
-    <p>The backend is live and running on Vercel.</p>
-    <p>Try <a href="/ping">/ping</a> or <a href="/api/categories">/api/categories</a>.</p>
-  `);
-});
-
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/transactions", transactionRoutes);
@@ -137,16 +129,14 @@ app.use((err, _req, res, _next) => {
 });
 
 /* ------------------------------------------------------------------
-   ✅ Export for Vercel
+   ✅ Export app for Vercel
 ------------------------------------------------------------------ */
-export default (req, res) => app(req, res);
+export default app;
 
 /* ------------------------------------------------------------------
    ✅ Local Development Mode
 ------------------------------------------------------------------ */
 if (process.env.NODE_ENV !== "production") {
   const port = process.env.PORT || 3000;
-  app.listen(port, () =>
-    console.log(`🚀 Server running at http://localhost:${port}`)
-  );
+  app.listen(port, () => console.log(`🚀 Server running at http://localhost:${port}`));
 }
