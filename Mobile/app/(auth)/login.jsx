@@ -19,8 +19,9 @@ import { useTheme } from "../../context/theme-context";
 import { useUser } from "../../context/user-context";
 import { useRouter } from "expo-router";
 
+import { API_URL } from "../../constants/api";
+
 const { height } = Dimensions.get("window");
-const BASE_URL = "https://trupee-production.up.railway.app";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
@@ -36,17 +37,24 @@ export default function Login() {
 
   const parseJSON = async (res) => {
     const text = await res.text();
-    try { return text ? JSON.parse(text) : {}; } catch { return { message: text }; }
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return { message: text };
+    }
   };
 
   const onLogin = async () => {
     if (!EMAIL_RE.test(email.trim()) || !password) {
-      Alert.alert("Check your details", "• Valid email address\n• Password is required");
+      Alert.alert(
+        "Check your details",
+        "• Valid email address\n• Password is required"
+      );
       return;
     }
     try {
       setLoading(true);
-      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

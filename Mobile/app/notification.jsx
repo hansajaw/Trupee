@@ -10,6 +10,8 @@ import {
   Platform,
   Switch,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -21,8 +23,14 @@ import i18n from "../i18n";
 export default function NotificationScreen() {
   const { theme } = useTheme();
   const router = useRouter();
-  const { isEnabled, planned, addPlanned, updatePlanned, removePlanned, toggleItem } =
-    useNotifications();
+  const {
+    isEnabled,
+    planned,
+    addPlanned,
+    updatePlanned,
+    removePlanned,
+    toggleItem,
+  } = useNotifications();
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -59,7 +67,10 @@ export default function NotificationScreen() {
 
   const save = async () => {
     if (!title.trim()) {
-      Alert.alert(i18n.t("titleRequired") || "Title required", i18n.t("enterTitle") || "Please enter a title.");
+      Alert.alert(
+        i18n.t("titleRequired") || "Title required",
+        i18n.t("enterTitle") || "Please enter a title."
+      );
       return;
     }
     const payload = {
@@ -79,12 +90,22 @@ export default function NotificationScreen() {
   };
 
   const renderItem = ({ item }) => (
-    <View style={[styles.item, { backgroundColor: theme.white, borderColor: theme.border }]}>
+    <View
+      style={[
+        styles.item,
+        { backgroundColor: theme.white, borderColor: theme.border },
+      ]}
+    >
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: theme.textDark }]}>{item.title || "Payment"}</Text>
+        <Text style={[styles.title, { color: theme.textDark }]}>
+          {item.title || "Payment"}
+        </Text>
         <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-          LKR {(Number(item.amount) || 0).toLocaleString()} • {new Date(item.dueDate).toLocaleDateString()}
-          {item.remindBeforeDays ? ` • ${item.remindBeforeDays}d ${i18n.t("before") || "before"}` : ""}
+          LKR {(Number(item.amount) || 0).toLocaleString()} •{" "}
+          {new Date(item.dueDate).toLocaleDateString()}
+          {item.remindBeforeDays
+            ? ` • ${item.remindBeforeDays}d ${i18n.t("before") || "before"}`
+            : ""}
         </Text>
       </View>
 
@@ -97,11 +118,17 @@ export default function NotificationScreen() {
         style={{ marginRight: 8, opacity: isEnabled ? 1 : 0.4 }}
       />
 
-      <TouchableOpacity onPress={() => openEdit(item)} style={{ paddingHorizontal: 6 }}>
+      <TouchableOpacity
+        onPress={() => openEdit(item)}
+        style={{ paddingHorizontal: 6 }}
+      >
         <Ionicons name="create-outline" size={20} color={theme.textDark} />
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => removePlanned(item.id)} style={{ paddingHorizontal: 6 }}>
+      <TouchableOpacity
+        onPress={() => removePlanned(item.id)}
+        style={{ paddingHorizontal: 6 }}
+      >
         <Ionicons name="trash-outline" size={20} color={theme.error} />
       </TouchableOpacity>
     </View>
@@ -113,12 +140,17 @@ export default function NotificationScreen() {
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.85}
-          style={[styles.iconBtn, { backgroundColor: theme.white, borderColor: theme.border }]}
+          style={[
+            styles.iconBtn,
+            { backgroundColor: theme.white, borderColor: theme.border },
+          ]}
         >
           <Ionicons name="arrow-back" size={20} color={theme.textDark} />
         </TouchableOpacity>
 
-        <Text style={[styles.h1, { color: theme.textDark }]}>{i18n.t("notifications") || "Notifications"}</Text>
+        <Text style={[styles.h1, { color: theme.textDark }]}>
+          {i18n.t("notifications") || "Notifications"}
+        </Text>
 
         <View
           style={[
@@ -130,7 +162,11 @@ export default function NotificationScreen() {
           ]}
         >
           <Ionicons
-            name={isEnabled ? "checkmark-circle-outline" : "close-circle-outline"}
+            name={
+              isEnabled
+                ? "checkmark-circle-outline"
+                : "close-circle-outline"
+            }
             size={14}
             color={isEnabled ? theme.primary : theme.error}
           />
@@ -142,16 +178,31 @@ export default function NotificationScreen() {
               fontSize: 12,
             }}
           >
-            {isEnabled ? (i18n.t("enabled") || "Enabled") : (i18n.t("disabled") || "Disabled")}
+            {isEnabled
+              ? i18n.t("enabled") || "Enabled"
+              : i18n.t("disabled") || "Disabled"}
           </Text>
         </View>
       </View>
 
       {!isEnabled && (
-        <View style={[styles.banner, { backgroundColor: theme.primary + "20", borderColor: theme.primary }]}>
-          <Ionicons name="information-circle-outline" size={16} color={theme.primary} />
+        <View
+          style={[
+            styles.banner,
+            {
+              backgroundColor: theme.primary + "20",
+              borderColor: theme.primary,
+            },
+          ]}
+        >
+          <Ionicons
+            name="information-circle-outline"
+            size={16}
+            color={theme.primary}
+          />
           <Text style={{ color: theme.textDark, marginLeft: 6, flex: 1 }}>
-            {i18n.t("notifTurnedOff") || "Reminders are turned off in Settings."}
+            {i18n.t("notifTurnedOff") ||
+              "Reminders are turned off in Settings."}
           </Text>
           <TouchableOpacity
             onPress={() => router.push("/settings")}
@@ -171,7 +222,11 @@ export default function NotificationScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={{ alignItems: "center", marginTop: 60 }}>
-            <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} />
+            <Ionicons
+              name="calendar-outline"
+              size={48}
+              color={theme.textSecondary}
+            />
             <Text style={{ color: theme.textSecondary, marginTop: 8 }}>
               {i18n.t("noPlannedPayments") || "No planned payments yet."}
             </Text>
@@ -190,148 +245,232 @@ export default function NotificationScreen() {
         <Text style={styles.fabText}>Add reminder</Text>
       </TouchableOpacity>
 
-      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}>
-          <View style={[styles.modalContent, { backgroundColor: theme.white, borderColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.textDark }]}>
-              {editing ? (i18n.t("editReminder") || "Edit Reminder") : (i18n.t("addReminder") || "Add Reminder")}
-            </Text>
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={[styles.modalOverlay, { backgroundColor: theme.overlay }]}
+        >
+          <ScrollView contentContainerStyle={styles.modalScroll}>
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: theme.white,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.textDark }]}>
+                {editing
+                  ? i18n.t("editReminder") || "Edit Reminder"
+                  : i18n.t("addReminder") || "Add Reminder"}
+              </Text>
 
-            <View style={{ gap: 10 }}>
-              <TextInput
-                style={[
-                  styles.input,
-                  { borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.textDark },
-                ]}
-                placeholder={i18n.t("title") || "Title"}
-                placeholderTextColor={theme.placeholderText}
-                value={title}
-                onChangeText={setTitle}
-              />
+              <View style={{ gap: 10 }}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.inputBackground,
+                      color: theme.textDark,
+                    },
+                  ]}
+                  placeholder={i18n.t("title") || "Title"}
+                  placeholderTextColor={theme.placeholderText}
+                  value={title}
+                  onChangeText={setTitle}
+                />
 
-              <TextInput
-                style={[
-                  styles.input,
-                  { borderColor: theme.border, backgroundColor: theme.inputBackground, color: theme.textDark },
-                ]}
-                placeholder={i18n.t("amount") || "Amount (LKR)"}
-                placeholderTextColor={theme.placeholderText}
-                keyboardType="numeric"
-                value={amount}
-                onChangeText={setAmount}
-              />
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.inputBackground,
+                      color: theme.textDark,
+                    },
+                  ]}
+                  placeholder={i18n.t("amount") || "Amount (LKR)"}
+                  placeholderTextColor={theme.placeholderText}
+                  keyboardType="numeric"
+                  value={amount}
+                  onChangeText={setAmount}
+                />
 
-              <TouchableOpacity
-                style={[
-                  styles.input,
-                  styles.rowBetween,
-                  { borderColor: theme.border, backgroundColor: theme.inputBackground },
-                ]}
-                onPress={() => setShowPicker(true)}
-              >
-                <Text style={{ color: theme.textDark }}>
-                  {(i18n.t("dueDate") || "Due date")}: {dueDate.toLocaleDateString()}
-                </Text>
-                <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.input,
+                    styles.rowBetween,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.inputBackground,
+                    },
+                  ]}
+                  onPress={() => setShowPicker(true)}
+                >
+                  <Text style={{ color: theme.textDark }}>
+                    {(i18n.t("dueDate") || "Due date")}:{" "}
+                    {dueDate.toLocaleDateString()}
+                  </Text>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={18}
+                    color={theme.textSecondary}
+                  />
+                </TouchableOpacity>
 
-              {showPicker && (
-                <>
-                  {Platform.OS === "ios" ? (
-                    <Modal transparent animationType="slide" onRequestClose={() => setShowPicker(false)}>
-                      <View style={styles.pickerSheet}>
-                        <View style={[styles.pickerInner, { backgroundColor: theme.white }]}>
-                          <DateTimePicker
-                            value={dueDate}
-                            mode="date"
-                            display="spinner"
-                            onChange={(_, d) => d && setDueDate(d)}
-                            style={{ alignSelf: "stretch" }}
-                          />
-                          <TouchableOpacity
-                            style={[styles.doneBtn, { backgroundColor: theme.primary }]}
-                            onPress={() => setShowPicker(false)}
+                {showPicker && (
+                  <>
+                    {Platform.OS === "ios" ? (
+                      <Modal
+                        transparent
+                        animationType="slide"
+                        onRequestClose={() => setShowPicker(false)}
+                      >
+                        <View style={styles.pickerSheet}>
+                          <View
+                            style={[
+                              styles.pickerInner,
+                              { backgroundColor: theme.white },
+                            ]}
                           >
-                            <Text style={{ color: "#fff", fontWeight: "600" }}>
-                              {i18n.t("done") || "Done"}
-                            </Text>
-                          </TouchableOpacity>
+                            <DateTimePicker
+                              value={dueDate}
+                              mode="date"
+                              display="spinner"
+                              onChange={(_, d) => d && setDueDate(d)}
+                              style={{ alignSelf: "stretch" }}
+                            />
+                            <TouchableOpacity
+                              style={[
+                                styles.doneBtn,
+                                { backgroundColor: theme.primary },
+                              ]}
+                              onPress={() => setShowPicker(false)}
+                            >
+                              <Text
+                                style={{
+                                  color: "#fff",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {i18n.t("done") || "Done"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                      </View>
-                    </Modal>
-                  ) : (
-                    <DateTimePicker
-                      value={dueDate}
-                      mode="date"
-                      display="default"
-                      onChange={(e, d) => {
-                        setShowPicker(false);
-                        if (d) setDueDate(d);
-                      }}
-                    />
-                  )}
-                </>
-              )}
+                      </Modal>
+                    ) : (
+                      <DateTimePicker
+                        value={dueDate}
+                        mode="date"
+                        display="default"
+                        onChange={(e, d) => {
+                          setShowPicker(false);
+                          if (d) setDueDate(d);
+                        }}
+                      />
+                    )}
+                  </>
+                )}
 
-              <View
-                style={[
-                  styles.input,
-                  styles.rowBetween,
-                  { borderColor: theme.border, backgroundColor: theme.inputBackground },
-                ]}
-              >
-                <Text style={{ color: theme.textDark }}>
-                  {(i18n.t("remindBefore") || "Remind before")}: {remindBeforeDays} {i18n.t("days") || "days"}
-                </Text>
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={() => setRemindBeforeDays(Math.max(0, (Number(remindBeforeDays) || 1) - 1))}
-                    style={[styles.stepBtn, { borderColor: theme.border }]}
-                  >
-                    <Ionicons name="remove" size={16} color={theme.textDark} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setRemindBeforeDays((Number(remindBeforeDays) || 1) + 1)}
-                    style={[styles.stepBtn, { borderColor: theme.border }]}
-                  >
-                    <Ionicons name="add" size={16} color={theme.textDark} />
-                  </TouchableOpacity>
+                <View
+                  style={[
+                    styles.input,
+                    styles.rowBetween,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.inputBackground,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.textDark }}>
+                    {(i18n.t("remindBefore") || "Remind before")}:{" "}
+                    {remindBeforeDays} {i18n.t("days") || "days"}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setRemindBeforeDays(
+                          Math.max(0, (Number(remindBeforeDays) || 1) - 1)
+                        )
+                      }
+                      style={[styles.stepBtn, { borderColor: theme.border }]}
+                    >
+                      <Ionicons
+                        name="remove"
+                        size={16}
+                        color={theme.textDark}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setRemindBeforeDays(
+                          (Number(remindBeforeDays) || 1) + 1
+                        )
+                      }
+                      style={[styles.stepBtn, { borderColor: theme.border }]}
+                    >
+                      <Ionicons name="add" size={16} color={theme.textDark} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.input,
+                    styles.rowBetween,
+                    {
+                      borderColor: theme.border,
+                      backgroundColor: theme.inputBackground,
+                    },
+                  ]}
+                >
+                  <Text style={{ color: theme.textDark }}>
+                    {i18n.t("enabled") || "Enabled"}
+                  </Text>
+                  <Switch
+                    value={enabled}
+                    onValueChange={setEnabled}
+                    trackColor={{
+                      false: theme.border,
+                      true: theme.primaryLight,
+                    }}
+                    thumbColor={enabled ? theme.primary : theme.white}
+                  />
                 </View>
               </View>
 
-              <View
-                style={[
-                  styles.input,
-                  styles.rowBetween,
-                  { borderColor: theme.border, backgroundColor: theme.inputBackground },
-                ]}
-              >
-                <Text style={{ color: theme.textDark }}>{i18n.t("enabled") || "Enabled"}</Text>
-                <Switch
-                  value={enabled}
-                  onValueChange={setEnabled}
-                  trackColor={{ false: theme.border, true: theme.primaryLight }}
-                  thumbColor={enabled ? theme.primary : theme.white}
-                />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: theme.error }]}
+                  onPress={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
+                >
+                  <Text style={styles.buttonText}>
+                    {i18n.t("cancel") || "Cancel"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: theme.primary }]}
+                  onPress={save}
+                >
+                  <Text style={styles.buttonText}>
+                    {i18n.t("save") || "Save"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.button, { backgroundColor: theme.error }]}
-                onPress={() => {
-                  setShowModal(false);
-                  resetForm();
-                }}
-              >
-                <Text style={styles.buttonText}>{i18n.t("cancel") || "Cancel"}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={save}>
-                <Text style={styles.buttonText}>{i18n.t("save") || "Save"}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -415,18 +554,56 @@ const styles = StyleSheet.create({
   },
 
   modalOverlay: { flex: 1, justifyContent: "flex-end" },
-  modalContent: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, borderWidth: 1, maxHeight: "88%" },
+  modalScroll: { flex: 1, justifyContent: "flex-end" },
+  modalContent: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    maxHeight: "88%",
+  },
   modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
 
   input: { borderWidth: 1, borderRadius: 10, padding: 12 },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  stepBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  stepBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
 
-  pickerSheet: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
-  pickerInner: { padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  doneBtn: { marginTop: 10, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
+  pickerSheet: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  pickerInner: {
+    padding: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  doneBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
 
-  modalButtons: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 14 },
-  button: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8 },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 14,
+  },
+  button: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+  },
   buttonText: { color: "#fff", fontWeight: "600" },
 });

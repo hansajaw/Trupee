@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
 import { useTheme } from "../context/theme-context";
 import { usePayments } from "../context/payment-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,14 +24,23 @@ export default function Add() {
   const handleAddTransaction = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch("https://your-api-domain.com/api/transaction/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title, amount: parseFloat(amount), type, category, date: new Date() }),
-      });
+      const response = await fetch(
+        "https://your-api-domain.com/api/transaction/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title,
+            amount: parseFloat(amount),
+            type,
+            category,
+            date: new Date(),
+          }),
+        }
+      );
       if (response.ok) {
         const newTransaction = await response.json();
         setPayments([...payments, newTransaction]);
@@ -33,34 +51,44 @@ export default function Add() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.title, { color: theme.textDark }]}>Add Transaction</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Title"
-        value={title}
-        onChangeText={setTitle}
-        placeholderTextColor={theme.placeholderText}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Amount"
-        value={amount}
-        onChangeText={setAmount}
-        keyboardType="numeric"
-        placeholderTextColor={theme.placeholderText}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Category"
-        value={category}
-        onChangeText={setCategory}
-        placeholderTextColor={theme.placeholderText}
-      />
-      <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={handleAddTransaction}>
-        <Text style={styles.buttonText}>Add</Text>
-      </TouchableOpacity>
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <ScrollView>
+        <Text style={[styles.title, { color: theme.textDark }]}>
+          Add Transaction
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Title"
+          value={title}
+          onChangeText={setTitle}
+          placeholderTextColor={theme.placeholderText}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Amount"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          placeholderTextColor={theme.placeholderText}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Category"
+          value={category}
+          onChangeText={setCategory}
+          placeholderTextColor={theme.placeholderText}
+        />
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: theme.primary }]}
+          onPress={handleAddTransaction}
+        >
+          <Text style={styles.buttonText}>Add</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
